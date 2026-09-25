@@ -1,12 +1,12 @@
-const CACHE = "template-offline-v1";
+const CACHE = "2048game-v1";
 
 const ASSETS = [
   "/",
   "/index.html",
   "/style.css",
   "/script.js",
-  "/templateicon1-192.png",
-  "/templateicon1-512.png",
+  "/XTF-192.png",
+  "/XTF-512.png",
   "/favicon.ico",
   "/manifest.json"
 ];

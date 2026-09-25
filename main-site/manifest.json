@@ -1,14 +1,14 @@
 {
-    "name": "Template by UwU Apps",
-    "short_name": "UwU Template",
-    "description": "A simple template app; view live template at a glance!",
+    "name": "2048 Game by UwU Apps",
+    "short_name": "2048 Game",
+    "description": "A simple 2048game app; view live 2048game at a glance!",
     "icons": [{
-            "src": "templateicon1-192.png",
+            "src": "XTF-192.png",
             "type": "image/png",
             "sizes": "192x192"
         },
         {
-            "src": "templateicon1-512.png",
+            "src": "XTF-512.png",
             "type": "image/png",
             "sizes": "512x512"
         }
@@ -32,7 +32,7 @@
     "display": "standalone",
     "display_override": ["fullscreen", "minimal-ui", "window-controls-overlay"],
     "orientation": "any",
-    "id": "template",
+    "id": "2048game",
     "dir": "ltr",
     "scope": "/",
     "lang": "en",
