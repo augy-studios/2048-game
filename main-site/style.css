@@ -740,6 +740,47 @@ h1, h2 { font-weight: normal; }
 }
 .rank-msg:empty { display: none; }
 
+/* The finished game's seed, selectable so it can be copied by hand too. */
+.seed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 6px 6px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
+}
+.seed-text {
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+  text-align: left;
+}
+.seed-value {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.seed-copy {
+  flex: none;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+/* ---- new game dialog ---- */
+.seed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-error {
+  font-size: 0.85rem;
+  color: var(--error);
+}
+.field-error:empty { display: none; }
+
 /* ---- under the board ---- */
 .play-hint {
   width: var(--board);

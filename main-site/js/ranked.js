@@ -20,9 +20,15 @@ function localSeed() {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Seeds a player can paste in: the ones this page hands out are 32 hex
+// characters, and anything else of this shape plays a game too.
+export const SEED_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
 // A seed for a new game: the server's, which makes the game ranked, or one
-// made here when the server cannot be reached, which plays unranked.
-export async function getTicket() {
+// made here when the server cannot be reached, which plays unranked. A seed
+// the player pasted is never ranked: they may already know how it goes.
+export async function getTicket(pasted = null) {
+  if (pasted) return { gameId: null, seed: pasted, unranked: "seed" };
   if (navigator.onLine === false) return { gameId: null, seed: localSeed(), unranked: "offline" };
   try {
     const r = await api.newGame(RULES_VERSION);
@@ -86,9 +92,11 @@ export async function rankGame(game, save) {
   }
   if (!game.gameId) {
     say(
-      game.unranked === "offline"
-        ? "Played offline, so this game is not ranked."
-        : "The leaderboard was out of reach when this game started, so it is not ranked."
+      game.unranked === "seed"
+        ? "Played from a pasted seed, so this game is not ranked."
+        : game.unranked === "offline"
+          ? "Played offline, so this game is not ranked."
+          : "The leaderboard was out of reach when this game started, so it is not ranked."
     );
     return;
   }

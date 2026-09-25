@@ -31,6 +31,16 @@ times in ten and otherwise a 4. Reaching 2048 offers to keep going or end the
 game there. The game in progress is saved after every move, so a reload, a
 closed tab or the update bar's Reload picks up where it was.
 
+### Seeds
+
+Every game has a seed, which decides where each new tile lands. It shows on
+the end of game screen with a Copy button, and not before: mid game it would
+let another tab try moves ahead and see what comes. New game takes an
+optional seed, up to 64 letters, numbers, hyphens and underscores, so a
+copied seed plays the same game again (the same moves bring the same tiles)
+and a typed one like `hello` works too. A game from a pasted seed is never
+ranked, since its player may already know how it goes.
+
 Swipes are read on the board only, which has `touch-action: none`, and the
 page sets `overscroll-behavior: none`, so a swipe never scrolls, pulls to
 refresh or navigates back.
@@ -73,9 +83,10 @@ it (`api/_lib/check.js`):
 
 A game is finished once, `submit` reads its score from the game row and never
 from the request, and a game goes on the board once, within an hour of
-finishing. A game started offline, or while the API could not be reached, has
-no seed from the server and plays unranked. It cannot tell a person from a
-script that plays at human speed.
+finishing. A game started offline, while the API could not be reached, or
+from a pasted seed has no seed from the server and plays unranked. The seed a
+ranked game is played with is in the page's own storage, so this cannot stop
+a script that reads it and looks ahead, or one that plays at human speed.
 
 ### Leaderboards
 

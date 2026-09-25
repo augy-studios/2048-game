@@ -3,7 +3,7 @@
 // themselves are in js/engine.js.
 
 import { CELLS, MARK_EVERY, RULES_VERSION, WIN_TILE, canMove, move, newGame, replay, statsOf, topTile } from "./engine.js";
-import { getTicket, hideRank, rankGame } from "./ranked.js";
+import { SEED_PATTERN, getTicket, hideRank, rankGame } from "./ranked.js";
 import { closeModal, openModal } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
@@ -162,8 +162,16 @@ function showOverlay(mode) {
     els.overlaySub.textContent = `Score ${fmt(stats.score)}. Highest tile ${stats.top_tile}.`;
     els.primary.textContent = "New game";
     els.primary.dataset.act = "new-game";
+    els.secondary.textContent = "Play a seed";
+    els.secondary.dataset.act = "seed";
+    els.seedValue.textContent = record.seed;
+    els.copySeed.textContent = "Copy";
+    els.seedMsg.textContent = "";
   }
-  els.secondary.hidden = mode !== "won";
+  // Only once the game is over: mid game, the seed would let another tab
+  // try moves ahead and see where the tiles land.
+  els.seedRow.hidden = mode !== "ended";
+  els.secondary.hidden = mode === "starting";
   els.actions.hidden = mode === "starting";
   els.overlay.classList.remove("hidden");
   if (mode !== "starting") els.primary.focus({ preventScroll: true });
@@ -221,17 +229,17 @@ function endGame() {
   rankGame(record, save);
 }
 
-async function startGame() {
+// A new game, from the server's seed, or from `pasted` when the player gave one.
+async function startGame(pasted = null) {
   const token = ++starting;
   stopAutoplay();
-  closeModal("newGameModal");
   hideRank();
   engine = null;
   record = null;
   drawAll();
   showOverlay("starting");
 
-  const ticket = await getTicket();
+  const ticket = await getTicket(pasted);
   if (token !== starting) return;
 
   engine = newGame(ticket.seed);
@@ -254,10 +262,42 @@ async function startGame() {
   drawAll(true);
 }
 
-// The New game button. A game with moves in it asks first.
-function askNewGame() {
-  if (engine && record && !record.ended && engine.moves.length > 0) openModal("newGameModal");
-  else startGame();
+/* ---- seeds ---- */
+
+// The New game dialog: an optional seed, and a warning when a game with
+// moves in it would be lost.
+function openNewGame() {
+  $("newGameWarning").hidden = !(engine && record && !record.ended && engine.moves.length > 0);
+  $("seedInput").value = "";
+  $("seedError").textContent = "";
+  openModal("newGameModal");
+  $("seedInput").focus();
+}
+
+function onNewGameSubmit(event) {
+  event.preventDefault();
+  const seed = $("seedInput").value.trim();
+  if (seed && !SEED_PATTERN.test(seed)) {
+    $("seedError").textContent = "A seed is up to 64 letters, numbers, hyphens and underscores.";
+    $("seedInput").focus();
+    return;
+  }
+  closeModal("newGameModal");
+  startGame(seed || null);
+}
+
+async function copySeed() {
+  const seed = record?.seed;
+  if (!seed) return;
+  try {
+    await navigator.clipboard.writeText(seed);
+    els.copySeed.textContent = "Copied";
+    els.seedMsg.textContent = "Seed copied.";
+  } catch {
+    // No clipboard access: select it, so a long press or Ctrl+C copies it.
+    getSelection()?.selectAllChildren(els.seedValue);
+    els.seedMsg.textContent = "Seed selected. Copy it from here.";
+  }
 }
 
 function onOverlayAction(act) {
@@ -271,6 +311,8 @@ function onOverlayAction(act) {
     endGame();
   } else if (act === "new-game") {
     startGame();
+  } else if (act === "seed") {
+    openNewGame();
   }
 }
 
@@ -439,6 +481,10 @@ export function initGame() {
     actions: $("overlayActions"),
     primary: $("overlayPrimary"),
     secondary: $("overlaySecondary"),
+    seedRow: $("seedRow"),
+    seedValue: $("seedValue"),
+    seedMsg: $("seedMsg"),
+    copySeed: $("copySeedBtn"),
   });
 
   // The sixteen empty cells under the tiles.
@@ -453,8 +499,9 @@ export function initGame() {
   loadBest();
   document.addEventListener("keydown", onKey);
   wireSwipes();
-  $("newGameBtn").addEventListener("click", askNewGame);
-  $("confirmNewBtn").addEventListener("click", startGame);
+  $("newGameBtn").addEventListener("click", openNewGame);
+  $("newGameForm").addEventListener("submit", onNewGameSubmit);
+  els.copySeed.addEventListener("click", copySeed);
   [els.primary, els.secondary].forEach((btn) => btn.addEventListener("click", () => onOverlayAction(btn.dataset.act)));
 
   const restored = loadSaved();

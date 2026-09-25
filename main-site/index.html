@@ -119,6 +119,13 @@
                         <p class="overlay-sub" id="overlaySub"></p>
                     </div>
 
+                    <!-- End of game only: the seed, to play the same game again or share it. -->
+                    <div class="seed-row" id="seedRow" hidden>
+                        <p class="seed-text">Seed <span class="seed-value" id="seedValue"></span></p>
+                        <button class="btn btn-quiet seed-copy" id="copySeedBtn" type="button">Copy</button>
+                        <span class="visually-hidden" id="seedMsg" role="status" aria-live="polite"></span>
+                    </div>
+
                     <!-- End of game only; js/ranked.js fills it in. -->
                     <div class="rank-area" id="rankArea" hidden>
                         <form class="name-form" id="submitForm" autocomplete="off" hidden>
@@ -155,16 +162,27 @@
     <div class="modal-backdrop hidden" id="newGameModal">
         <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="newGameModalTitle">
             <div class="modal-head">
-                <h2 id="newGameModalTitle">Start a new game?</h2>
+                <h2 id="newGameModalTitle">New game</h2>
                 <button class="icon-btn small" type="button" data-close-modal="newGameModal" aria-label="Close">
                     <span data-icon="close"></span>
                 </button>
             </div>
-            <p class="modal-text">The game on the board ends without going on the leaderboard.</p>
-            <div class="modal-actions">
-                <button class="btn btn-primary" type="button" id="confirmNewBtn">New game</button>
-                <button class="btn btn-quiet" type="button" data-close-modal="newGameModal">Keep playing</button>
-            </div>
+            <p class="modal-text" id="newGameWarning" hidden>The game on the board ends without going on the leaderboard.</p>
+            <form class="seed-form" id="newGameForm" autocomplete="off" novalidate>
+                <label for="seedInput" class="modal-section-label">Seed (optional)</label>
+                <input id="seedInput" class="field" type="text" placeholder="Paste a seed" maxlength="64"
+                    autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go"
+                    aria-describedby="seedHelp">
+                <p class="mode-note" id="seedHelp">
+                    Leave it empty for a new game. A pasted seed starts the same game it came from, so the same
+                    moves bring the same tiles. Games from a pasted seed are not ranked.
+                </p>
+                <p class="field-error" id="seedError" role="alert"></p>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" type="submit">Start game</button>
+                    <button class="btn btn-quiet" type="button" data-close-modal="newGameModal">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 
