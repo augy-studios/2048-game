@@ -21,15 +21,45 @@
 
     <meta charset="utf-8">
     <title>2048 Game | UwU Apps</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="A simple 2048game app; view live 2048game at a glance!">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Play 2048 free on your phone or computer. Swipe to merge tiles, pick up where you left off, climb the leaderboards, and keep playing offline.">
+    <link rel="canonical" href="https://2048.uwuapps.org/" />
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="2048 Game | UwU Apps" />
     <meta property="og:site_name" content="UwU Apps" />
-    <meta property="og:description" content="A simple 2048game app; view live 2048game at a glance!" />
+    <meta property="og:description" content="Play 2048 free on your phone or computer. Swipe to merge tiles, pick up where you left off, climb the leaderboards, and keep playing offline." />
+    <meta property="og:url" content="https://2048.uwuapps.org/" />
 
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Jua">
+    <!-- Theme before first paint. Keep the key in step with APP_KEY in js/theme.js. -->
+    <script>
+        (function () {
+            var k = "uwu2048";
+            var m = "light";
+            var c = "classic";
+            try {
+                m = localStorage.getItem(k + ".mode") || "light";
+                c = localStorage.getItem(k + ".colorTheme") || "classic";
+            } catch (e) {
+                // Storage blocked: the defaults.
+            }
+
+            // Time based mode. Resolved here rather than in theme.js because
+            // theme.js runs after first paint, and an evening reader would
+            // otherwise watch a white page turn dark. Keep the two hours in step
+            // with LIGHT_FROM_HOUR and LIGHT_UNTIL_HOUR in js/theme.js.
+            document.documentElement.setAttribute("data-mode-preference", m);
+            if (m === "time") {
+                var h = new Date().getHours();
+                m = h >= 9 && h < 18 ? "light" : "dark";
+            }
+
+            document.documentElement.setAttribute("data-mode", m);
+            document.documentElement.setAttribute("data-color-theme", c);
+        })();
+    </script>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
     <link rel="stylesheet" href="/style.css">
     <meta name="theme-color" content="#ccffcc" />
 
@@ -38,24 +68,180 @@
     <link rel="icon" href="/favicon.ico">
     <link rel="shortcut icon" href="/favicon.ico">
     <meta name="twitter:card" content="summary">
-    <meta name="twitter:image:src" content="/XTF-main.png">
-    <meta property="og:image" content="/XTF-main.png" />
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <script defer="" src="https://use.fontawesome.com/releases/v6.5.2/js/all.js"></script>
+    <meta name="twitter:image:src" content="https://2048.uwuapps.org/XTF-main.png">
+    <meta property="og:image" content="https://2048.uwuapps.org/XTF-main.png" />
 </head>
 
 <body>
-    2048 Game
+    <header class="topbar">
+        <div class="brand">
+            <img class="brand-icon" src="/XTF-192.png" alt="" width="32" height="32">
+            <h1 class="app-title">2048 Game</h1>
+        </div>
+        <div class="topbar-actions">
+            <button class="icon-btn" id="boardBtn" type="button" aria-haspopup="dialog" aria-label="Leaderboard">
+                <span data-icon="trophy"></span>
+            </button>
+            <button class="icon-btn" id="settingsBtn" type="button" aria-haspopup="dialog" aria-label="Settings">
+                <span data-icon="settings"></span>
+            </button>
+            <button class="icon-btn" id="themeBtn" type="button" aria-haspopup="dialog" aria-label="Theme">
+                <span data-icon="sun"></span>
+            </button>
+        </div>
+    </header>
 
-    <script src="/script.js"></script>
+    <main class="game">
+        <section class="score-row" aria-label="Scores">
+            <div class="score-box glass">
+                <p class="score-label">Score</p>
+                <p class="score-val" id="score">0</p>
+            </div>
+            <div class="score-box glass">
+                <p class="score-label">Best</p>
+                <p class="score-val" id="best">0</p>
+            </div>
+            <button class="btn btn-primary pill new-game" id="newGameBtn" type="button">
+                <span data-icon="refresh"></span>New game
+            </button>
+        </section>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.register('/sw.js');
-        }
-    </script>
-    
+        <div class="board-frame glass" id="boardFrame">
+            <div class="board" id="board" role="img" aria-label="Game board">
+                <div class="cells" id="cells" aria-hidden="true"></div>
+                <div class="tiles" id="tiles" aria-hidden="true"></div>
+            </div>
+
+            <div class="board-overlay hidden" id="boardOverlay">
+                <div class="overlay-panel">
+                    <div role="status">
+                        <p class="overlay-title" id="overlayTitle"></p>
+                        <p class="overlay-sub" id="overlaySub"></p>
+                    </div>
+
+                    <!-- End of game only; js/ranked.js fills it in. -->
+                    <div class="rank-area" id="rankArea" hidden>
+                        <form class="name-form" id="submitForm" autocomplete="off" hidden>
+                            <label for="nameInput" class="visually-hidden">Leaderboard name</label>
+                            <input id="nameInput" class="field" type="text" placeholder="Your name" maxlength="20"
+                                autocomplete="nickname" spellcheck="false" enterkeyhint="done">
+                            <button id="submitBtn" class="btn btn-primary" type="submit">Add</button>
+                        </form>
+                        <p id="rankMsg" class="rank-msg" role="status" aria-live="polite"></p>
+                        <button id="overlayBoardBtn" class="btn btn-quiet" type="button">
+                            <span data-icon="trophy"></span>Leaderboard
+                        </button>
+                    </div>
+
+                    <div class="overlay-actions" id="overlayActions">
+                        <button class="btn btn-primary" type="button" id="overlayPrimary"></button>
+                        <button class="btn btn-quiet" type="button" id="overlaySecondary" hidden></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="play-hint">
+            <span class="kbd-hint">Slide the tiles with the arrow keys or W A S D.</span>
+            <span class="touch-hint">Swipe on the board to slide the tiles.</span>
+            Two equal tiles that touch join into one. Reach 2048, then keep going.
+        </p>
+    </main>
+
+    <footer class="foot">
+        Made with <span class="footer-heart" data-icon="heartFilled" aria-label="love" role="img"></span> by Augy
+    </footer>
+
+    <div class="modal-backdrop hidden" id="newGameModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="newGameModalTitle">
+            <div class="modal-head">
+                <h2 id="newGameModalTitle">Start a new game?</h2>
+                <button class="icon-btn small" type="button" data-close-modal="newGameModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <p class="modal-text">The game on the board ends without going on the leaderboard.</p>
+            <div class="modal-actions">
+                <button class="btn btn-primary" type="button" id="confirmNewBtn">New game</button>
+                <button class="btn btn-quiet" type="button" data-close-modal="newGameModal">Keep playing</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="boardModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="boardModalTitle">
+            <div class="modal-head">
+                <h2 id="boardModalTitle">Leaderboard</h2>
+                <button class="icon-btn small" type="button" data-close-modal="boardModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <div class="mode-toggle" id="boardTabs" role="tablist" aria-label="Board">
+                <button class="mode-btn" type="button" role="tab" data-board="best" aria-selected="true" aria-controls="boardBody">Best score</button>
+                <button class="mode-btn" type="button" role="tab" data-board="total" aria-selected="false" aria-controls="boardBody">Total points</button>
+            </div>
+            <div id="boardBody" class="board-body" role="tabpanel"></div>
+            <p id="boardNote" class="mode-note"></p>
+            <p class="mode-note">Anyone who picks the same name shares its entry.</p>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="settingsModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+            <div class="modal-head">
+                <h2 id="settingsModalTitle">Settings</h2>
+                <button class="icon-btn small" type="button" data-close-modal="settingsModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+
+            <p class="modal-section-label">Leaderboard name</p>
+            <p id="savedName" class="saved-name"></p>
+            <form id="nameForm" class="name-form" autocomplete="off">
+                <label for="settingsName" class="visually-hidden">New leaderboard name</label>
+                <input id="settingsName" class="field" type="text" placeholder="New name" maxlength="20"
+                    autocomplete="nickname" spellcheck="false" enterkeyhint="done">
+                <button id="saveNameBtn" class="btn btn-primary" type="submit">Save</button>
+            </form>
+            <p id="nameMsg" class="mode-note" role="status" aria-live="polite"></p>
+            <button id="clearNameBtn" class="btn btn-quiet pill clear-name" type="button" hidden>Clear name</button>
+
+            <p class="modal-section-label">Games</p>
+            <button class="setting-toggle" type="button" role="switch" aria-checked="false" data-setting="auto_submit">
+                <span>Add finished games automatically</span>
+                <span class="switch-state"></span><span class="switch" aria-hidden="true"></span>
+            </button>
+            <p id="autoNote" class="mode-note">Save a name first to add games automatically.</p>
+
+            <p class="mode-note">
+                The leaderboard name is filled in whenever you add a game, so it is always the last one you used.
+                With automatic adding on, every finished game goes on the leaderboard under it. Games played
+                offline are not ranked. Settings and the game in progress are kept in this browser.
+            </p>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="themeModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+            <div class="modal-head">
+                <h2 id="themeModalTitle">Theme</h2>
+                <button class="icon-btn small" type="button" data-close-modal="themeModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <p class="modal-section-label">Mode</p>
+            <div class="mode-toggle" id="modeToggle">
+                <button class="mode-btn" type="button" data-mode="light" aria-pressed="false"><span data-icon="sun"></span>Light</button>
+                <button class="mode-btn" type="button" data-mode="dark" aria-pressed="false"><span data-icon="moon"></span>Dark</button>
+                <button class="mode-btn mode-btn-wide" type="button" data-mode="time" aria-pressed="false"><span data-icon="clock"></span>Time-based</button>
+            </div>
+            <p class="mode-note" id="modeNote" hidden></p>
+            <p class="modal-section-label">Brand colour</p>
+            <div class="swatch-grid" id="swatchGrid"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/js/app.js"></script>
 </body>
 
 </html>

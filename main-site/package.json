@@ -1,0 +1,13 @@
+{
+  "name": "uwu2048",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "2048 Game: the PWA and the leaderboard API, deployed on Vercel.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "check": "node ../scripts/check.mjs"
+  }
+}

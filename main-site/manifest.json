@@ -1,7 +1,7 @@
 {
     "name": "2048 Game by UwU Apps",
     "short_name": "2048 Game",
-    "description": "A simple 2048game app; view live 2048game at a glance!",
+    "description": "Play 2048 free on your phone or computer. Swipe to merge tiles, pick up where you left off, climb the leaderboards, and keep playing offline.",
     "icons": [{
             "src": "XTF-192.png",
             "type": "image/png",
@@ -27,8 +27,8 @@
         }
     ],
     "start_url": "/",
-    "theme_color": "#cfc",
-    "background_color": "#cfc",
+    "theme_color": "#ccffcc",
+    "background_color": "#ccffcc",
     "display": "standalone",
     "display_override": ["fullscreen", "minimal-ui", "window-controls-overlay"],
     "orientation": "any",
@@ -37,8 +37,7 @@
     "scope": "/",
     "lang": "en",
     "categories": [
-        "entertainment",
-        "lifestyle",
-        "utilities"
+        "games",
+        "entertainment"
     ]
 }

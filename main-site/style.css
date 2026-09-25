@@ -1,42 +1,778 @@
+/* 2048 Game styles. The first part is the uwuapps theme system, copied from
+   uwuapps-theme.md section 1 unchanged; the game follows after it. */
+
+/* ---- base ---- */
 * {
   padding: 0;
   margin: 0;
   box-sizing: border-box;
-  font-family: "Jua", sans-serif;
-
-  /* Chrome and Opera */
-  user-select: none;
-
-  /* Safari */
+  font-family: "Jua", "Segoe UI", sans-serif;
   -webkit-user-select: none;
-
-  /* Konqueror HTML */
-  -khtml-user-select: none;
-
-  /* Firefox */
-  -moz-user-select: none;
-
-  /* Internet Explorer/Edge */
-  -ms-user-select: none;
+  user-select: none;
 }
 
-:link {
-  color: #6f6;
+html, body { height: 100%; }
+input, textarea { user-select: text; }
+
+:link, :visited { color: var(--brand-ink); }
+a:hover { text-decoration: none; }
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
-:visited {
-  color: #66f;
+/* ---- brand colour tokens (7 swatches) ---- */
+:root,
+:root[data-color-theme="classic"] {
+  --brand: #ccffcc;
+  --brand-rgb: 204, 255, 204;
 }
+:root[data-color-theme="not-green-1"] { --brand: #ffcccc; --brand-rgb: 255, 204, 204; }
+:root[data-color-theme="not-green-2"] { --brand: #ccccff; --brand-rgb: 204, 204, 255; }
+:root[data-color-theme="not-green-3"] { --brand: #ffffcc; --brand-rgb: 255, 255, 204; }
+:root[data-color-theme="not-green-4"] { --brand: #ffccff; --brand-rgb: 255, 204, 255; }
+:root[data-color-theme="not-green-5"] { --brand: #ccffff; --brand-rgb: 204, 255, 255; }
+:root[data-color-theme="really-light-green"] { --brand: #ffffff; --brand-rgb: 255, 255, 255; }
+
+/* ---- light / dark surface tokens ---- */
+:root,
+:root[data-mode="light"] {
+  --bg: #eef2f0;
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-strong: rgba(255, 255, 255, 0.78);
+  --surface-border: rgba(255, 255, 255, 0.65);
+  --ink: #121815;
+  --muted: #5b665f;
+  --shadow: 0 10px 30px rgba(20, 40, 30, 0.10);
+  --brand-ink: #1f6b3d;
+  --ok: #0f7234;
+  --warn: #a24b08;
+  --busy: #627288;
+  --error: #b91c1c;
+}
+
+:root[data-mode="dark"] {
+  --bg: #0c100e;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.11);
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --ink: #eef2ef;
+  --muted: #9aa7a0;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  --brand-ink: #bff5cf;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --busy: #94a3b8;
+  --error: #fa9696;
+}
+
+/* Same in both modes: brand tints are pale whatever the mode. */
+:root {
+  --on-brand: #121815;
+  /* Brand-derived fills. Any surface that tracked the brand swatch before
+     still tracks it, in both modes. Text on these is always --on-brand. */
+  --brand-fill: color-mix(in srgb, var(--brand) 55%, var(--surface-strong));
+  --brand-fill-strong: color-mix(in srgb, var(--brand) 75%, var(--surface-strong));
+  /* Secondary text on --surface-strong. Plain --muted only reaches 3.6:1
+     there in dark mode, since the strong surface lightens the backdrop. */
+  --muted-strong: color-mix(in srgb, var(--ink) 70%, transparent);
+}
+
+/* flat, static colour derived from theme, no gradients */
+body {
+  background-color: color-mix(in srgb, var(--brand) 10%, var(--bg));
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ---- glass primitive ---- */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid var(--surface-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+
+/* ---- icon button (theme trigger, modal close) ---- */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
+  color: var(--ink);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.icon-btn:hover { transform: translateY(-1px); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.small { width: 34px; height: 34px; }
+.icon-btn.small svg { width: 16px; height: 16px; }
+
+/* ---- modal shell ---- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(10, 15, 12, 0.35);
+  padding: 12px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease, visibility 0s linear 0s;
+}
+.modal-backdrop.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+}
+
+@media (min-width: 640px) {
+  .modal-backdrop { align-items: center; }
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-strong);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s ease;
+}
+.modal-backdrop.hidden .modal {
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-head h2 { font-size: 1.1rem; color: var(--brand-ink); }
+
+/* Section labels inside the modal: "Mode", "Brand colour". */
+.modal-section-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+body.modal-open { overflow: hidden; }
+
+/* ---- mode toggle ---- */
+.mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+.mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.mode-btn svg { width: 16px; height: 16px; }
+.mode-btn.active {
+  background: var(--brand-fill);
+  color: var(--on-brand);
+}
+
+/* Time based mode only. Light and dark stay side by side and the third
+   spans the row beneath them: two equal columns would put the longer label
+   in a box too narrow to read at 320px, and the full width row also signals
+   this is a different kind of choice, a rule for picking a mode rather than
+   a mode. Omit both rules in an app that ships the two button toggle. */
+.mode-btn-wide { grid-column: 1 / -1; }
+.mode-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ---- swatch grid ---- */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  font-size: 0.78rem;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+/* Ringed in its own colour, plus a containment ring. On a light modal the
+   pale swatches reach only 1:1 against the surface on their own, so the
+   outer ring is what actually carries the active state, at 3.4:1. */
+.swatch.active {
+  border-color: var(--swatch-color);
+  box-shadow:
+    0 0 0 2px var(--swatch-color),
+    0 0 0 3px color-mix(in srgb, var(--ink) 50%, transparent);
+}
+.swatch-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .swatch-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   Shared app pieces
+   ========================================================================== */
+
+/* Author display rules (.btn, .overlay-sub) would otherwise beat [hidden]. */
+[hidden] { display: none !important; }
+
+:root[data-mode="dark"] { color-scheme: dark; }
+
+/* A game page: no pull to refresh, no rubber band, no overscroll swipe
+   navigation where the browser lets a page opt out. The update bar covers
+   what a refresh was for, and the game in progress is saved anyway. */
+html,
+body { overscroll-behavior: none; }
+
+h1, h2 { font-weight: normal; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 2px;
+}
+
+.icon-btn span { display: inline-flex; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+  font-size: 0.9rem;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--brand-fill); color: var(--on-brand); }
+.btn-primary:hover { background: var(--brand-fill-strong); }
+.btn-quiet { background: var(--surface-strong); color: var(--ink); }
+.btn span { display: inline-flex; margin-right: 6px; }
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.pill { border-radius: 999px; }
+
+/* Text fields: the leaderboard name, on the end of game screen and in settings. */
+.name-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.field {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  /* 3:1 against the card, as a field's edge must be. */
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.field::placeholder { color: var(--muted-strong); opacity: 1; }
+
+/* ---- modals ---- */
+.modal-text {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---- settings modal ---- */
+.saved-name {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.clear-name { align-self: flex-start; }
+
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  font-size: 0.9rem;
+  color: var(--ink);
+  text-align: left;
+}
+.setting-toggle > span:first-child { flex: 1; }
+.switch-state {
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted-strong);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.setting-toggle[aria-checked="true"] .switch {
+  background: var(--brand-ink);
+  border-color: var(--brand-ink);
+}
+.setting-toggle[aria-checked="true"] .switch::after {
+  background: var(--bg);
+  transform: translateX(16px);
+}
+
+/* ---- leaderboard modal ---- */
+.board-body {
+  min-height: 120px;
+  max-height: 50vh;
+  overflow-y: auto;
+  transition: opacity 0.15s ease;
+}
+.board-body[aria-busy="true"] { opacity: 0.6; }
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.board-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+.board-table td {
+  padding: 7px 8px;
+  border-top: 1px solid var(--surface-border);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.board-table th:first-child,
+.board-table td:first-child { width: 2.5em; color: var(--muted-strong); }
+.board-empty {
+  padding: 32px 8px;
+  text-align: center;
+  color: var(--muted-strong);
+}
+
+/* ==========================================================================
+   Update prompt bar (update-bar-spec.md). Collapses through a 0fr grid row
+   so hiding it animates rather than snapping the page up.
+   ========================================================================== */
+
+.update-notice {
+  display: grid;
+  grid-template-rows: 1fr;
+  color: var(--ink);
+  font-size: 0.875rem;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows 0.2s ease, opacity 0.2s ease, visibility 0s linear 0s;
+}
+.update-notice.hidden {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows 0.18s ease, opacity 0.18s ease, visibility 0s linear 0.18s;
+}
+.update-notice-clip {
+  min-height: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
+  border-bottom: 1px solid var(--surface-border);
+}
+.update-notice-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.5rem 14px;
+  /* Under the notch on a phone, where the bar is the topmost thing on screen. */
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+.update-notice p { flex: 1 1 auto; min-width: 0; }
+.update-notice .btn { flex: none; padding: 6px 12px; }
+
+/* ==========================================================================
+   Tile tokens. Tiles mean the same thing in every theme, so they keep the
+   one palette across all 14 combinations, the way the footer heart keeps
+   its green. Every number is dark ink on its tile, which clears 4.5:1 on
+   all of them (the least is 4.9:1, on 64); classic 2048's white numbers do
+   not. Past 2048 every tile is the one deep violet, with white numbers.
+   ========================================================================== */
 
 :root {
-  --brand: #99ff99;
-  --bg: #f7faf8;
-  --card: #ffffff;
-  --ink: #0f1721;
-  --muted: #667085;
-  --ring: rgba(153, 255, 153, 0.5);
-  --ok: #16a34a;
-  --warn: #ea580c;
-  --busy: #b91c1c;
+  --tile-ink: #2b2118;
+  --tile-2: #eee4da;
+  --tile-4: #ede0c8;
+  --tile-8: #f2b179;
+  --tile-16: #f59563;
+  --tile-32: #f67c5f;
+  --tile-64: #f65e3b;
+  --tile-128: #edcf72;
+  --tile-256: #edcc61;
+  --tile-512: #edc850;
+  --tile-1024: #edc53f;
+  --tile-2048: #edc22e;
+  --tile-super: #5b3cc4;
+  --tile-super-ink: #ffffff;
+  --cell-empty: color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
+/* ==========================================================================
+   Layout. The board is the biggest square that fits the screen with
+   everything else still on it, up to 480px.
+   ========================================================================== */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 14px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+.app-title {
+  font-size: 1.3rem;
+  color: var(--brand-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.game {
+  /* Everything on screen that is not the board, so it fits without scrolling. */
+  --chrome-h: 250px;
+  --board: min(calc(100vw - 28px), 480px, max(260px, calc(100vh - var(--chrome-h))));
+  --gap: calc(var(--board) * 0.03);
+  --cell: calc((var(--board) - 5 * var(--gap)) / 4);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 14px;
+}
+@supports (height: 100dvh) {
+  .game { --board: min(calc(100vw - 28px), 480px, max(260px, calc(100dvh - var(--chrome-h)))); }
+}
+
+/* ---- scores and New game ---- */
+.score-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: var(--board);
+}
+.score-box {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 12px;
+  border-radius: 14px;
+}
+.score-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.score-val {
+  font-size: 1.35rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.new-game { flex: none; }
+
+/* ---- the board ---- */
+.board-frame {
+  position: relative;
+  width: var(--board);
+  height: var(--board);
+  padding: var(--gap);
+  border-radius: 16px;
+  /* Swipes are the game's; the browser gets none of them. */
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.board {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.cells {
+  display: grid;
+  grid-template-columns: repeat(4, var(--cell));
+  grid-template-rows: repeat(4, var(--cell));
+  gap: var(--gap);
+}
+.cell {
+  border-radius: 10px;
+  background: var(--cell-empty);
+}
+.tiles {
+  position: absolute;
+  inset: 0;
+}
+
+/* Placed with the translate property, so the pop and appear animations can
+   use scale without fighting over transform. */
+.tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--cell);
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--tile-ink);
+  font-size: calc(var(--cell) * 0.46);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  translate: calc(var(--c) * (var(--cell) + var(--gap))) calc(var(--r) * (var(--cell) + var(--gap)));
+  transition: translate 0.15s ease-in-out;
+}
+.tile.digits-3 { font-size: calc(var(--cell) * 0.4); }
+.tile.digits-4 { font-size: calc(var(--cell) * 0.32); }
+.tile.digits-5 { font-size: calc(var(--cell) * 0.26); }
+.tile.digits-6 { font-size: calc(var(--cell) * 0.22); }
+
+.tile-2 { background: var(--tile-2); }
+.tile-4 { background: var(--tile-4); }
+.tile-8 { background: var(--tile-8); }
+.tile-16 { background: var(--tile-16); }
+.tile-32 { background: var(--tile-32); }
+.tile-64 { background: var(--tile-64); }
+.tile-128 { background: var(--tile-128); }
+.tile-256 { background: var(--tile-256); }
+.tile-512 { background: var(--tile-512); }
+.tile-1024 { background: var(--tile-1024); }
+.tile-2048 { background: var(--tile-2048); }
+.tile-super { background: var(--tile-super); color: var(--tile-super-ink); }
+
+/* New and merged tiles wait for the slide to finish, then show. */
+.tile.is-new { animation: tile-appear 0.18s ease 0.15s backwards; }
+.tile.is-merged {
+  z-index: 1;
+  animation: tile-pop 0.18s ease 0.15s backwards;
+}
+@keyframes tile-appear {
+  from { opacity: 0; scale: 0; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes tile-pop {
+  0% { opacity: 0; scale: 0; }
+  60% { opacity: 1; scale: 1.12; }
+  100% { opacity: 1; scale: 1; }
+}
+
+/* Autoplay moves faster than the usual timings allow. */
+.board.fast .tile { transition-duration: 0.05s; }
+.board.fast .tile.is-new,
+.board.fast .tile.is-merged {
+  animation-duration: 0.05s;
+  animation-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile.is-new,
+  .tile.is-merged { animation-delay: 0s !important; }
+}
+
+/* ---- win, end and starting screens, over the board ---- */
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-align: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease, visibility 0s linear 0s;
+}
+.board-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+}
+.overlay-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  transition: transform 0.2s ease;
+}
+.board-overlay.hidden .overlay-panel { transform: translateY(10px); }
+.overlay-title { font-size: 1.6rem; color: var(--brand-ink); }
+.overlay-sub { color: var(--ink); }
+.overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.rank-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.rank-area .name-form .btn { padding: 8px 12px; }
+.rank-msg {
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.rank-msg:empty { display: none; }
+
+/* ---- under the board ---- */
+.play-hint {
+  width: var(--board);
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+.touch-hint { display: none; }
+@media (pointer: coarse) {
+  .kbd-hint { display: none; }
+  .touch-hint { display: inline; }
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 18px 14px max(18px, env(safe-area-inset-bottom));
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.footer-heart { display: inline-flex; color: #34c759; }
+.footer-heart svg { width: 16px; height: 16px; }
+
+@media (max-width: 480px) {
+  .topbar { padding: 10px; }
+  .game { padding: 0 10px; --board: min(calc(100vw - 20px), 480px, max(260px, calc(100vh - var(--chrome-h)))); }
+  .cell,
+  .tile { border-radius: 8px; }
+}
+@supports (height: 100dvh) {
+  @media (max-width: 480px) {
+    .game { --board: min(calc(100vw - 20px), 480px, max(260px, calc(100dvh - var(--chrome-h)))); }
+  }
+}
