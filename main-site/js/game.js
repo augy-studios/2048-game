@@ -1,10 +1,24 @@
 // The game on the page: the board and its animation, keys and swipes, the
-// win and end screens, saving the game in progress, and autoplay. The rules
-// themselves are in js/engine.js.
+// win and end screens, saving the game in progress, replays and autoplay.
+// The rules themselves are in js/engine.js.
 
-import { CELLS, MARK_EVERY, RULES_VERSION, WIN_TILE, canMove, move, newGame, replay, statsOf, topTile } from "./engine.js";
+import {
+  CELLS,
+  MARK_EVERY,
+  RULES_VERSION,
+  SAVES_FROM,
+  WIN_TILE,
+  canMove,
+  fromPosition,
+  move,
+  newGame,
+  positionOf,
+  replay as replayMoves,
+  statsOf,
+  topTile,
+} from "./engine.js";
 import { SEED_PATTERN, getTicket, hideRank, rankGame } from "./ranked.js";
-import { closeModal, openModal } from "./ui.js";
+import { closeModal, hydrateIcons, openModal } from "./ui.js";
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString();
@@ -42,37 +56,61 @@ function save() {
 function loadSaved() {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
-    if (!saved || saved.rules !== RULES_VERSION || typeof saved.seed !== "string" || typeof saved.moves !== "string") {
+    if (
+      !saved ||
+      !(saved.rules >= SAVES_FROM && saved.rules <= RULES_VERSION) ||
+      typeof saved.seed !== "string" ||
+      typeof saved.moves !== "string"
+    ) {
       return null;
     }
     // The board is played again from the seed rather than stored, so a saved
-    // game is always one the rules could have produced.
-    const game = replay(saved.seed, saved.moves);
+    // game is always one the rules could have produced, and one saved under
+    // older rules comes back scored by these.
+    const game = replayMoves(saved.seed, saved.moves);
     if (!game) return null;
+    saved.rules = RULES_VERSION;
     return { saved, game };
   } catch {
     return null;
   }
 }
 
-let best = 0;
+// This browser's best game: its score, and its seed and moves, so that when
+// the scoring changes it is replayed and shown on the new scale like any
+// other old game. { score, rules, seed, moves }; a bare number in storage is
+// from before bests kept their moves, and stays as it is.
+let best = { score: 0 };
 
-function loadBest() {
+function storeBest() {
   try {
-    best = Number(localStorage.getItem(BEST_KEY)) || 0;
-  } catch {
-    best = 0;
-  }
-}
-
-function noteBest(score) {
-  if (score <= best) return;
-  best = score;
-  try {
-    localStorage.setItem(BEST_KEY, String(best));
+    localStorage.setItem(BEST_KEY, JSON.stringify(best));
   } catch {
     // Shown for this page view only.
   }
+}
+
+function loadBest() {
+  try {
+    const raw = localStorage.getItem(BEST_KEY) ?? "0";
+    best = raw.startsWith("{") ? JSON.parse(raw) : { score: Number(raw) || 0 };
+  } catch {
+    best = { score: 0 };
+    return;
+  }
+  if (typeof best.seed === "string" && best.rules >= SAVES_FROM && best.rules < RULES_VERSION) {
+    const game = replayMoves(best.seed, best.moves);
+    if (game) {
+      best = { score: game.score, rules: RULES_VERSION, seed: game.seed, moves: game.moves };
+      storeBest();
+    }
+  }
+}
+
+function noteBest() {
+  if (!engine || engine.score <= best.score) return;
+  best = { score: engine.score, rules: RULES_VERSION, seed: engine.seed, moves: engine.moves };
+  storeBest();
 }
 
 /* ---- drawing ---- */
@@ -131,9 +169,9 @@ function drawMove(result) {
 
 function drawScore() {
   const score = engine?.score ?? 0;
-  noteBest(score);
+  noteBest();
   els.score.textContent = fmt(score);
-  els.best.textContent = fmt(best);
+  els.best.textContent = fmt(best.score);
   els.board.setAttribute(
     "aria-label",
     engine ? `Game board. Score ${fmt(score)}. Highest tile ${topTile(engine.board)}.` : "Game board"
@@ -171,6 +209,8 @@ function showOverlay(mode) {
   // Only once the game is over: mid game, the seed would let another tab
   // try moves ahead and see where the tiles land.
   els.seedRow.hidden = mode !== "ended";
+  // A game with no moves has nothing to watch.
+  els.replayBtn.hidden = mode !== "ended" || !engine?.moves.length;
   els.secondary.hidden = mode === "starting";
   els.actions.hidden = mode === "starting";
   els.overlay.classList.remove("hidden");
@@ -233,6 +273,7 @@ function endGame() {
 async function startGame(pasted = null) {
   const token = ++starting;
   stopAutoplay();
+  closeReplay(false);
   hideRank();
   engine = null;
   record = null;
@@ -261,6 +302,156 @@ async function startGame(pasted = null) {
   hideOverlay();
   drawAll(true);
 }
+
+/* ---- replay ----
+   The finished game played back on the board, to see where it went wrong.
+   Every position is worked out once when the replay opens, so stepping back
+   is a lookup and stepping forward animates the real move. Only for a game
+   that has ended: mid game it would show where the next tiles land. */
+
+// At 1x, a move every REPLAY_STEP_MS, long enough to follow each slide.
+const REPLAY_STEP_MS = 400;
+const REPLAY_SPEEDS = [1, 2, 4, 8];
+const DIRECTION_NAMES = { U: "up", D: "down", L: "left", R: "right" };
+
+let replay = null; // { moves, positions, at, playing, speed, timer }
+
+function openReplay() {
+  if (!engine || !record?.ended || !engine.moves.length) return;
+  stopAutoplay();
+
+  const moves = engine.moves;
+  const game = newGame(record.seed);
+  const positions = [positionOf(game)];
+  for (const dir of moves) {
+    move(game, dir);
+    positions.push(positionOf(game));
+  }
+  replay = { moves, positions, at: 0, playing: false, speed: 1, timer: 0 };
+
+  hideOverlay();
+  $("playHint").hidden = true;
+  els.replayBar.hidden = false;
+  els.seek.max = String(moves.length);
+  drawReplayUi();
+  drawReplayPosition();
+  setReplayPlaying(true);
+  els.replayBar.querySelector('[data-replay="play"]').focus({ preventScroll: true });
+}
+
+// `toEnd`: back to the end of game screen. Starting a new game passes false.
+function closeReplay(toEnd = true) {
+  if (!replay) return;
+  clearTimeout(replay.timer);
+  replay = null;
+  els.replayBar.hidden = true;
+  $("playHint").hidden = false;
+  els.board.classList.remove("fast");
+  if (!toEnd) return;
+  drawAll();
+  showOverlay("ended");
+}
+
+// Draws the board at the replay's position, with no animation.
+function drawReplayPosition() {
+  settle();
+  els.tiles.replaceChildren();
+  tileEls = replay.positions[replay.at].board.map((v, i) => (v ? makeTile(v, i, null) : null));
+  drawReplayUi();
+}
+
+function drawReplayUi() {
+  const { moves, at, positions, playing, speed } = replay;
+  const total = moves.length;
+  els.replayStatus.textContent =
+    at === 0 ? `Start, ${fmt(total)} moves to go` : `Move ${fmt(at)} of ${fmt(total)}, ${DIRECTION_NAMES[moves[at - 1]]}`;
+  els.replayScore.textContent = `Score ${fmt(positions[at].score)}`;
+  els.seek.value = String(at);
+  els.seek.setAttribute("aria-valuetext", at === 0 ? "Start" : `Move ${at} of ${total}`);
+
+  const bar = els.replayBar;
+  bar.querySelector('[data-replay="start"]').disabled = at === 0;
+  bar.querySelector('[data-replay="back"]').disabled = at === 0;
+  bar.querySelector('[data-replay="forward"]').disabled = at === total;
+  bar.querySelector('[data-replay="end"]').disabled = at === total;
+
+  const playBtn = bar.querySelector('[data-replay="play"]');
+  playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+  playBtn.querySelector("[data-icon]").dataset.icon = playing ? "pause" : "play";
+  hydrateIcons(playBtn);
+
+  const speedBtn = bar.querySelector('[data-replay="speed"]');
+  speedBtn.textContent = `${speed}×`;
+  speedBtn.setAttribute("aria-label", `Speed, ${speed} times`);
+}
+
+// One move on, animated as it was played. False at the end.
+function replayForward() {
+  const r = replay;
+  if (r.at >= r.moves.length) return false;
+  const game = fromPosition(record.seed, r.positions[r.at]);
+  const result = move(game, r.moves[r.at]);
+  r.at++;
+  drawMove(result);
+  drawReplayUi();
+  return true;
+}
+
+function replaySeek(at) {
+  replay.at = Math.max(0, Math.min(replay.moves.length, at));
+  drawReplayPosition();
+}
+
+function setReplayPlaying(on) {
+  const r = replay;
+  clearTimeout(r.timer);
+  r.playing = on;
+  // Play at the end starts over.
+  if (on && r.at >= r.moves.length) replaySeek(0);
+  drawReplayUi();
+  if (!on) return;
+
+  const tick = () => {
+    if (!replay?.playing) return;
+    if (!replayForward()) {
+      setReplayPlaying(false);
+      return;
+    }
+    replay.timer = setTimeout(tick, REPLAY_STEP_MS / replay.speed);
+  };
+  r.timer = setTimeout(tick, REPLAY_STEP_MS / r.speed);
+}
+
+function onReplayAction(act) {
+  if (!replay) return;
+  if (act === "play") setReplayPlaying(!replay.playing);
+  else if (act === "close") closeReplay();
+  else if (act === "speed") {
+    replay.speed = REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(replay.speed) + 1) % REPLAY_SPEEDS.length];
+    // Past 2x the usual slide would still be running when the next move lands.
+    els.board.classList.toggle("fast", replay.speed > 2);
+    setReplayPlaying(replay.playing);
+  } else {
+    // Stepping or jumping pauses, so the move stays on screen to look at.
+    setReplayPlaying(false);
+    if (act === "back") replaySeek(replay.at - 1);
+    else if (act === "forward") replayForward();
+    else if (act === "start") replaySeek(0);
+    else if (act === "end") replaySeek(replay.moves.length);
+  }
+}
+
+const REPLAY_KEYS = {
+  " ": "play",
+  k: "play",
+  ArrowLeft: "back",
+  j: "back",
+  ArrowRight: "forward",
+  l: "forward",
+  Home: "start",
+  End: "end",
+  Escape: "close",
+};
 
 /* ---- seeds ---- */
 
@@ -313,6 +504,8 @@ function onOverlayAction(act) {
     startGame();
   } else if (act === "seed") {
     openNewGame();
+  } else if (act === "replay") {
+    openReplay();
   }
 }
 
@@ -438,6 +631,15 @@ function onKey(e) {
   if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (document.body.classList.contains("modal-open") || typing(e)) return;
 
+  if (replay) {
+    const act = REPLAY_KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    // Space or Enter on a focused control is that control's own click.
+    if (!act || (e.target instanceof HTMLButtonElement && (e.key === " " || e.key === "Enter"))) return;
+    e.preventDefault();
+    onReplayAction(act);
+    return;
+  }
+
   if (e.key === "F2") {
     e.preventDefault();
     toggleAutoplay();
@@ -510,6 +712,11 @@ export function initGame() {
     seedValue: $("seedValue"),
     seedMsg: $("seedMsg"),
     copySeed: $("copySeedBtn"),
+    replayBtn: $("overlayReplay"),
+    replayBar: $("replayBar"),
+    replayStatus: $("replayStatus"),
+    replayScore: $("replayScore"),
+    seek: $("replaySeek"),
   });
 
   // The sixteen empty cells under the tiles.
@@ -528,6 +735,18 @@ export function initGame() {
   $("newGameBtn").addEventListener("click", openNewGame);
   $("newGameForm").addEventListener("submit", onNewGameSubmit);
   els.copySeed.addEventListener("click", copySeed);
+  els.replayBtn.addEventListener("click", () => onOverlayAction("replay"));
+  els.replayBar.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-replay]");
+    if (btn) onReplayAction(btn.dataset.replay);
+  });
+  els.seek.addEventListener("input", () => {
+    if (!replay) return;
+    // Read before pausing: pausing redraws the slider at the old position.
+    const to = Number(els.seek.value);
+    setReplayPlaying(false);
+    replaySeek(to);
+  });
   [els.primary, els.secondary].forEach((btn) => btn.addEventListener("click", () => onOverlayAction(btn.dataset.act)));
 
   const restored = loadSaved();
@@ -540,6 +759,9 @@ export function initGame() {
   record = restored.saved;
   record.marks = Array.isArray(record.marks) ? record.marks : [];
   record.rank ??= { finished: false, submitted: null };
+  // Stores the game under the current rules straight away, rescored if it
+  // was saved under older ones.
+  save();
   drawAll(true);
 
   if (record.ended) {

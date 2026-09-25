@@ -20,6 +20,14 @@ export const icons = {
   ),
   refresh: svg(`<path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.3L20 15.5"/><path d="M20 20v-4.5h-4.5"/>`),
   play: svg(`<path d="M7 5.5v13l11-6.5-11-6.5Z"/>`),
+
+  // Replay controls
+  pause: svg(`<path d="M9 5.5v13M15 5.5v13"/>`),
+  stepBack: svg(`<path d="m15 18-6-6 6-6"/>`),
+  stepForward: svg(`<path d="m9 18 6-6-6-6"/>`),
+  skipBack: svg(`<path d="M6 5.5v13"/><path d="m18 18-6-6 6-6"/>`),
+  skipForward: svg(`<path d="M18 5.5v13"/><path d="m6 18 6-6-6-6"/>`),
+  replay: svg(`<path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.5"/><path d="M4 3.5v5h5"/><path d="M11 9.5v5l3.5-2.5-3.5-2.5Z"/>`),
   heartFilled: svg(
     `<path d="M12 20.2 4.9 13a5 5 0 0 1 7.1-7l0 0a5 5 0 0 1 7.1 7L12 20.2Z" fill="currentColor" stroke="none"/>`
   ),

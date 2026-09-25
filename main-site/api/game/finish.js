@@ -33,10 +33,12 @@ export default endpoint("POST", async ({ body }) => {
   }
 
   // Conditional on still being unfinished, so two finishes cannot both land.
+  // The moves and the rules version are kept so the score can be worked out
+  // again if the scoring changes (_lib/rescore.js).
   const [saved] =
     (await rest(`uwu2048_games?id=eq.${id}&finished_at=is.null`, {
       method: "PATCH",
-      body: { ...result.stats, finished_at: new Date().toISOString() },
+      body: { ...result.stats, finished_at: new Date().toISOString(), log: claim.log, rules: RULES_VERSION },
       prefer: "return=representation",
     })) ?? [];
   if (!saved) throw new HttpError(409, "already_finished", "That game is already over.");

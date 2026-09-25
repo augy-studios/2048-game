@@ -102,7 +102,7 @@
                 <p class="score-val" id="best">0</p>
             </div>
             <button class="btn btn-primary pill new-game" id="newGameBtn" type="button">
-                <span data-icon="refresh"></span>New game
+                <span data-icon="refresh"></span><span class="new-game-label">New game</span>
             </button>
         </section>
 
@@ -143,12 +143,45 @@
                     <div class="overlay-actions" id="overlayActions">
                         <button class="btn btn-primary" type="button" id="overlayPrimary"></button>
                         <button class="btn btn-quiet" type="button" id="overlaySecondary" hidden></button>
+                        <button class="btn btn-quiet" type="button" id="overlayReplay" hidden>
+                            <span data-icon="replay"></span>Watch replay
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <p class="play-hint">
+        <!-- The finished game played back; js/game.js drives it. -->
+        <section class="replay-bar glass" id="replayBar" aria-label="Replay" hidden>
+            <div class="replay-head">
+                <p class="replay-status" id="replayStatus"></p>
+                <p class="replay-score" id="replayScore"></p>
+            </div>
+            <input class="replay-seek" id="replaySeek" type="range" min="0" max="0" value="0" step="1"
+                aria-label="Move">
+            <div class="replay-controls">
+                <button class="icon-btn" type="button" data-replay="start" aria-label="Back to the start">
+                    <span data-icon="skipBack"></span>
+                </button>
+                <button class="icon-btn" type="button" data-replay="back" aria-label="Back a move">
+                    <span data-icon="stepBack"></span>
+                </button>
+                <button class="icon-btn replay-play" type="button" data-replay="play" aria-label="Play">
+                    <span data-icon="play"></span>
+                </button>
+                <button class="icon-btn" type="button" data-replay="forward" aria-label="Forward a move">
+                    <span data-icon="stepForward"></span>
+                </button>
+                <button class="icon-btn" type="button" data-replay="end" aria-label="Skip to the end">
+                    <span data-icon="skipForward"></span>
+                </button>
+                <button class="btn btn-quiet pill replay-speed" type="button" data-replay="speed"
+                    aria-label="Speed, 1 times">1×</button>
+            </div>
+            <button class="btn btn-quiet replay-close" type="button" data-replay="close">Close replay</button>
+        </section>
+
+        <p class="play-hint" id="playHint">
             <span class="kbd-hint">Slide the tiles with the arrow keys or W A S D.</span>
             <span class="touch-hint">Swipe on the board to slide the tiles.</span>
             Two equal tiles that touch join into one. Reach 2048, then keep going.

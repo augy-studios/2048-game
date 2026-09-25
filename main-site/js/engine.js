@@ -6,11 +6,20 @@
 // comes from the server, so replaying its moves gives the one board and score
 // that game could have had; nobody gets to choose their own tiles.
 //
-// Anything here that changes how a game plays out, the odds, the generator,
-// the order of spawns, must bump RULES_VERSION. The server refuses games played
-// under a different version rather than scoring them wrongly.
+// Anything here that changes how a game plays out or scores, the odds, the
+// generator, the order of spawns, the points, must bump RULES_VERSION. The
+// server refuses games played under a different version rather than scoring
+// them wrongly.
+//
+//   1  standard scoring: a merge scores the new tile's value
+//   2  tier bonus: a merge scores the new tile's value times its tier
+export const RULES_VERSION = 2;
 
-export const RULES_VERSION = 1;
+// The oldest RULES_VERSION whose saved games still replay to the same boards
+// under these rules. Version 2 changed only the points, so a game saved under
+// 1 loads and carries on, its score worked out again the new way. A change to
+// where tiles land has to raise this to the new RULES_VERSION.
+export const SAVES_FROM = 1;
 
 export const SIZE = 4;
 export const CELLS = SIZE * SIZE;
@@ -69,6 +78,16 @@ function createRng(seed) {
   return s;
 }
 
+/* ---- scoring ---- */
+
+// A tile's tier is its power of two: 2 is tier 1, 4 is tier 2, 2048 tier 11.
+export const tierOf = (value) => 31 - Math.clz32(value);
+
+// Points for a merge that makes `value`: the tile's value times its tier, so
+// each doubling is worth a little more than twice the last. Making a 4 scores
+// 8, a 64 scores 384, a 2048 scores 22,528, a 65536 scores 1,048,576.
+export const mergePoints = (value) => value * tierOf(value);
+
 /* ---- the board ---- */
 
 // Cell indexes along one row or column, in the order tiles travel towards:
@@ -126,7 +145,7 @@ export function slide(board, dir) {
 
       if (open >= 0 && next[cells[open]] === value) {
         next[cells[open]] = value * 2;
-        gained += value * 2;
+        gained += mergePoints(value * 2);
         slides.push({ from, to: cells[open], value, merged: true });
         // A merged tile does not merge again in the same move.
         open = -1;
@@ -171,6 +190,17 @@ export function canMove(board) {
 
 export function topTile(board) {
   return Math.max(...board);
+}
+
+// A game's position, without its move history: enough to play on from there.
+// A replay keeps one per move, so stepping back is a lookup.
+export function positionOf(game) {
+  return { board: game.board.slice(), rng: game.rng.slice(), score: game.score };
+}
+
+// A game that carries on from a position, as the original did.
+export function fromPosition(seed, position) {
+  return { seed: String(seed), board: position.board.slice(), score: position.score, moves: "", rng: position.rng.slice() };
 }
 
 // Plays a whole game again from its seed and its moves. Returns the game, or

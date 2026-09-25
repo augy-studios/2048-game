@@ -91,6 +91,12 @@ for (const [what, [claim, ms, seed = "check"]] of Object.entries(refusals)) {
   if (!check(seed, claim, ms).reason) fail(`replay: ${what} was accepted`);
 }
 
+// Rescoring an old game gives the score a fresh replay does under today's rules.
+const { rescored } = await import("../main-site/api/_lib/rescore.js");
+const [again] = rescored([{ id: "x", seed: "check", log: game.moves }]);
+if (again?.score !== game.score) fail("rescore: an old game's new score does not match its replay");
+if (rescored([{ id: "y", seed: "check", log: "UUUUUUUUUUUUUUUUUUUU" }]).length) fail("rescore: a log that does not replay was rescored");
+
 /* ---- 4. tile contrast ---- */
 
 function luminance(hex) {

@@ -588,6 +588,31 @@ h1, h2 { font-weight: normal; }
   white-space: nowrap;
 }
 .new-game { flex: none; }
+.btn .new-game-label { margin-right: 0; }
+
+/* Tier scoring runs to eight digits and more, so on a phone the button
+   gives its width to the scores: icon only, its name kept for screen
+   readers. */
+@media (max-width: 480px) {
+  .new-game {
+    width: 48px;
+    padding: 0;
+  }
+  .new-game [data-icon] { margin-right: 0; }
+  .new-game-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .score-box { padding: 6px 10px; }
+  .score-val { font-size: 1.25rem; }
+}
+@media (max-width: 359px) {
+  .score-val { font-size: 1.05rem; }
+}
 
 /* ---- the board ---- */
 .board-frame {
@@ -782,6 +807,54 @@ h1, h2 { font-weight: normal; }
   color: var(--error);
 }
 .field-error:empty { display: none; }
+
+/* ---- replay ---- */
+.replay-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: var(--board);
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+.replay-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.replay-status {
+  min-width: 0;
+  color: var(--ink);
+}
+.replay-score {
+  flex: none;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.replay-seek {
+  width: 100%;
+  accent-color: var(--brand-ink);
+  cursor: pointer;
+}
+.replay-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.replay-controls .icon-btn:disabled { opacity: 0.4; }
+.replay-play {
+  background: var(--brand-fill);
+  color: var(--on-brand);
+}
+.replay-speed {
+  min-width: 52px;
+  height: 42px;
+  font-variant-numeric: tabular-nums;
+}
+.replay-close { align-self: center; }
 
 /* ---- under the board ---- */
 .play-hint {

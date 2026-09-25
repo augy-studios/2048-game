@@ -26,10 +26,37 @@ its own games.
 
 ## Playing
 
-Standard 2048: a new tile after every move that moves something, a 2 nine
-times in ten and otherwise a 4. Reaching 2048 offers to keep going or end the
-game there. The game in progress is saved after every move, so a reload, a
+A new tile after every move that moves something, a 2 nine times in ten and
+otherwise a 4. Reaching 2048 offers to keep going or end the game there.
+
+Scoring scales with the tile: a merge scores the new tile's value times its
+tier, its power of two (`mergePoints` in `js/engine.js`). Making a 4 scores 8,
+a 64 scores 384, a 2048 scores 22,528 and a 65536 scores 1,048,576, so one big
+game is worth far more than many small ones. Standard 2048 scores the value
+alone; this is `RULES_VERSION` 2, and games saved under version 1 load and
+carry on with their score worked out again. The game in progress is saved after every move, so a reload, a
 closed tab or the update bar's Reload picks up where it was.
+
+### Replays
+
+A finished game can be watched back from the end of game screen: every move
+played out on the board, with the move number, its direction and the score at
+that point. Play and pause, step back and forward a move, jump to the start or
+end, drag to any move, or speed it up to 8 times (Space, the arrow keys, Home,
+End and Esc do the same). Every position is worked out when the replay opens,
+so stepping back is instant. Only a finished game: mid game it would show
+where the next tiles land.
+
+### Rescoring
+
+When the scoring changes, games already played change with it. The game in
+progress and the best score in this browser keep their seed and moves, and
+are replayed under the new rules when the page loads. Every finished game on
+the server keeps its moves and the `RULES_VERSION` it was scored under, and
+`api/_lib/rescore.js` replays the out of date ones before the leaderboard is
+read or a game is submitted, so the boards stay on one scale. Games finished
+before `migrations/002_uwu2048_rescore.sql` have no stored moves and keep the
+score they had.
 
 ### Seeds
 
@@ -80,6 +107,8 @@ it (`api/_lib/check.js`):
 - **Pace.** The page notes the time every 50 moves (`marks`). No 50 may take
   under 5 seconds, and the whole game may not have more moves than 10 a second
   allows since `new`, by the server's clock.
+
+`finish` stores `log` and the rules version with the game, for rescoring.
 
 A game is finished once, `submit` reads its score from the game row and never
 from the request, and a game goes on the board once, within an hour of

@@ -6,6 +6,7 @@
 
 import { endpoint, gameId, HttpError } from "../_lib/http.js";
 import { cleanName } from "../_lib/names.js";
+import { rescoreOldGames } from "../_lib/rescore.js";
 import { rpc } from "../_lib/supabase.js";
 
 const REFUSALS = {
@@ -20,6 +21,9 @@ export default endpoint("POST", async ({ body }) => {
   const id = gameId(body.game_id);
   const name = cleanName(body.name);
 
+  // The ranks returned compare this game with every other, so all of them
+  // must be on the current scoring first.
+  await rescoreOldGames().catch((err) => console.warn("rescore failed:", err.message));
   const [row] = (await rpc("uwu2048_submit", { p_game_id: id, p_name: name })) ?? [];
   if (row?.status !== "ok") {
     const [status, message] = REFUSALS[row?.status] ?? [500, "Could not submit."];

@@ -1,9 +1,11 @@
 // GET /api/leaderboard?board=best|total
 //   best  (default) -> { board, entries: [{ rank, name, score, top_tile }] }
 //   total           -> { board, entries: [{ rank, name, total, games }] }
-// Public, no login, one row per name, cached briefly at the edge.
+// Public, no login, one row per name, cached briefly at the edge. Games scored
+// under older rules are rescored first, so the board is on one scale.
 
 import { endpoint, HttpError } from "../_lib/http.js";
+import { rescoreOldGames } from "../_lib/rescore.js";
 import { rest } from "../_lib/supabase.js";
 
 const LIMIT = 100;
@@ -25,6 +27,7 @@ export default endpoint("GET", async ({ req, res }) => {
   const spec = BOARDS[board];
   if (!spec) throw new HttpError(400, "bad_board", "board is best or total.");
 
+  await rescoreOldGames().catch((err) => console.warn("rescore failed:", err.message));
   const rows = await rest(spec.query);
   res.setHeader("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=60");
   return { board, entries: (rows ?? []).map((r, i) => ({ rank: i + 1, ...spec.row(r) })) };

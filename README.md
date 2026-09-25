@@ -16,7 +16,8 @@ offline.
 
 1. **Supabase.** In the shared uwuapps project's SQL editor, run each file in
    `migrations/` once, in number order. Never edit a file once it has been
-   run; every change is a new file with the next number. Every table is
+   run; every change is a new file with the next number. Run a new file
+   before deploying the code that needs it. Every table is
    `uwu2048_` prefixed, with row level security on and no policies, so only the
    service role key can read or write.
 2. **Vercel.** Root directory `main-site`. Set `SUPABASE_URL` and
@@ -32,7 +33,8 @@ offline.
    check stops matching the game, a tile's number drops under 4.5:1, or an em
    dash turns up.
 
-If a change alters how games play out (odds, the seeded generator, the order
-tiles appear in), bump `RULES_VERSION` in `main-site/js/engine.js` as well.
-The server then refuses games from older cached copies instead of replaying
-them wrongly.
+If a change alters how games play out or score (odds, the seeded generator,
+the order tiles appear in, the points), bump `RULES_VERSION` in
+`main-site/js/engine.js` as well. The server then refuses games from older
+cached copies instead of replaying them wrongly. If tiles would land
+differently, raise `SAVES_FROM` to match too, or saved games will not load.

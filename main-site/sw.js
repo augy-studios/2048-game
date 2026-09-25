@@ -16,7 +16,7 @@
 // progress is saved after every move, so the reload loses nothing.
 // scripts/check.mjs fails if either appears anywhere else.
 
-const VERSION = "2026-09-25.1";
+const VERSION = "2026-09-25.2";
 
 const CACHE = `uwu2048-${VERSION}`;
 // Kept across versions: the font does not change when the site does.
