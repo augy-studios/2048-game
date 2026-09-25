@@ -317,9 +317,9 @@ function onOverlayAction(act) {
 }
 
 /* ---- autoplay ----
-   F2, left out of every hint on purpose. Turning it on at any point marks
-   this game as assisted, which keeps it off the leaderboard; a new game
-   starts clean. */
+   F2, or three quick taps on the game's name on a touch screen, both left
+   out of every hint on purpose. Turning it on at any point marks this game
+   as assisted, which keeps it off the leaderboard; a new game starts clean. */
 
 let autoplay = false;
 let worker = null;
@@ -390,6 +390,32 @@ function stopAutoplay() {
   els.board?.classList.remove("fast");
 }
 
+function toggleAutoplay() {
+  if (autoplay) stopAutoplay();
+  else startAutoplay();
+}
+
+// The touch screen's F2: three taps on the game's name, each within
+// TRIPLE_TAP_GAP_MS of the last. Touch and pen only, so clicking the title
+// with a mouse does nothing.
+const TRIPLE_TAP_GAP_MS = 400;
+
+function wireTitleTaps() {
+  const title = document.querySelector(".app-title");
+  let taps = 0;
+  let last = -Infinity;
+
+  title?.addEventListener("pointerup", (e) => {
+    if (e.pointerType === "mouse" || !e.isPrimary) return;
+    if (document.body.classList.contains("modal-open")) return;
+    taps = e.timeStamp - last <= TRIPLE_TAP_GAP_MS ? taps + 1 : 1;
+    last = e.timeStamp;
+    if (taps < 3) return;
+    taps = 0;
+    toggleAutoplay();
+  });
+}
+
 /* ---- input ---- */
 
 const KEYS = {
@@ -414,8 +440,7 @@ function onKey(e) {
 
   if (e.key === "F2") {
     e.preventDefault();
-    if (autoplay) stopAutoplay();
-    else startAutoplay();
+    toggleAutoplay();
     return;
   }
 
@@ -499,6 +524,7 @@ export function initGame() {
   loadBest();
   document.addEventListener("keydown", onKey);
   wireSwipes();
+  wireTitleTaps();
   $("newGameBtn").addEventListener("click", openNewGame);
   $("newGameForm").addEventListener("submit", onNewGameSubmit);
   els.copySeed.addEventListener("click", copySeed);

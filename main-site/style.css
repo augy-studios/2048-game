@@ -528,6 +528,8 @@ h1, h2 { font-weight: normal; }
   border-radius: 8px;
 }
 .app-title {
+  /* Quick taps here are read by js/game.js, not taken as a zoom. */
+  touch-action: manipulation;
   font-size: 1.3rem;
   color: var(--brand-ink);
   overflow: hidden;
