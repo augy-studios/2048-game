@@ -588,6 +588,7 @@ h1, h2 { font-weight: normal; }
   white-space: nowrap;
 }
 .new-game { flex: none; }
+.new-game:disabled { opacity: 0.4; transform: none; }
 .btn .new-game-label { margin-right: 0; }
 
 /* Tier scoring runs to eight digits and more, so on a phone the button
@@ -611,6 +612,7 @@ h1, h2 { font-weight: normal; }
   .score-val { font-size: 1.25rem; }
 }
 @media (max-width: 359px) {
+  .new-game { width: 40px; }
   .score-val { font-size: 1.05rem; }
 }
 

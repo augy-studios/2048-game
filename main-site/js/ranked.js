@@ -90,6 +90,10 @@ export async function rankGame(game, save) {
     say("Autoplay was used in this game, so it is not ranked.");
     return;
   }
+  if (game.undone) {
+    say("A move was undone in this game, so it is not ranked.");
+    return;
+  }
   if (!game.gameId) {
     say(
       game.unranked === "seed"

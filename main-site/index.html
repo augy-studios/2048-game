@@ -101,6 +101,9 @@
                 <p class="score-label">Best</p>
                 <p class="score-val" id="best">0</p>
             </div>
+            <button class="btn btn-quiet pill new-game" id="undoBtn" type="button" aria-keyshortcuts="Control+Z U" disabled>
+                <span data-icon="undo"></span><span class="new-game-label">Undo</span>
+            </button>
             <button class="btn btn-primary pill new-game" id="newGameBtn" type="button">
                 <span data-icon="refresh"></span><span class="new-game-label">New game</span>
             </button>
@@ -216,6 +219,22 @@
                     <button class="btn btn-quiet" type="button" data-close-modal="newGameModal">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="undoModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="undoModalTitle">
+            <div class="modal-head">
+                <h2 id="undoModalTitle">Undo a move</h2>
+                <button class="icon-btn small" type="button" data-close-modal="undoModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <p class="modal-text">Undo shows where the next tile would land, so once a move is undone this game is no longer ranked.</p>
+            <div class="modal-actions">
+                <button class="btn btn-primary" type="button" id="undoConfirmBtn">Undo</button>
+                <button class="btn btn-quiet" type="button" data-close-modal="undoModal">Cancel</button>
+            </div>
         </div>
     </div>
 

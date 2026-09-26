@@ -172,6 +172,7 @@ function drawScore() {
   noteBest();
   els.score.textContent = fmt(score);
   els.best.textContent = fmt(best.score);
+  els.undo.disabled = !canUndo();
   els.board.setAttribute(
     "aria-label",
     engine ? `Game board. Score ${fmt(score)}. Highest tile ${topTile(engine.board)}.` : "Game board"
@@ -295,6 +296,7 @@ async function startGame(pasted = null) {
     keepGoing: false,
     ended: false,
     assisted: false,
+    undone: false,
     stats: null,
     rank: { finished: false, submitted: null },
   };
@@ -330,6 +332,7 @@ function openReplay() {
   replay = { moves, positions, at: 0, playing: false, speed: 1, timer: 0 };
 
   hideOverlay();
+  els.undo.disabled = true;
   $("playHint").hidden = true;
   els.replayBar.hidden = false;
   els.seek.max = String(moves.length);
@@ -452,6 +455,48 @@ const REPLAY_KEYS = {
   End: "end",
   Escape: "close",
 };
+
+/* ---- undo ----
+   Any number of moves, back to the first. The game before the last move is
+   played again from the seed, generator and all, so moving the same way
+   again brings the same tile. That shows where tiles are about to land, so a
+   game with a move undone is not ranked, as with autoplay. Works from the
+   end of game screen too: a score already added stays on the leaderboard,
+   and the game plays on unranked. */
+
+const canUndo = () => Boolean(engine && record && !replay && engine.moves.length);
+
+// A ranked game asks first, once.
+function requestUndo() {
+  if (!canUndo()) return;
+  if (record.gameId && !record.assisted && !record.undone) {
+    openModal("undoModal");
+    return;
+  }
+  undo();
+}
+
+function undo() {
+  if (!canUndo()) return;
+  const game = replayMoves(record.seed, engine.moves.slice(0, -1));
+  if (!game) return;
+
+  stopAutoplay();
+  hideRank();
+  engine = game;
+  record.undone = true;
+  record.ended = false;
+  record.stats = null;
+  record.marks.length = Math.min(record.marks.length, Math.floor(engine.moves.length / MARK_EVERY));
+  // Back below 2048, making it again shows the win screen again.
+  if (topTile(engine.board) < WIN_TILE) {
+    record.won = false;
+    record.keepGoing = false;
+  }
+  save();
+  hideOverlay();
+  drawAll();
+}
 
 /* ---- seeds ---- */
 
@@ -628,8 +673,16 @@ function typing(e) {
 }
 
 function onKey(e) {
-  if (e.altKey || e.ctrlKey || e.metaKey) return;
-  if (document.body.classList.contains("modal-open") || typing(e)) return;
+  if (e.altKey || document.body.classList.contains("modal-open") || typing(e)) return;
+
+  // Ctrl+Z, Cmd+Z or U. Held down, it keeps stepping back.
+  const key = e.key.toLowerCase();
+  if (!replay && !e.shiftKey && ((e.ctrlKey || e.metaKey) ? key === "z" : key === "u")) {
+    e.preventDefault();
+    requestUndo();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey) return;
 
   if (replay) {
     const act = REPLAY_KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
@@ -717,6 +770,7 @@ export function initGame() {
     replayStatus: $("replayStatus"),
     replayScore: $("replayScore"),
     seek: $("replaySeek"),
+    undo: $("undoBtn"),
   });
 
   // The sixteen empty cells under the tiles.
@@ -734,6 +788,11 @@ export function initGame() {
   wireTitleTaps();
   $("newGameBtn").addEventListener("click", openNewGame);
   $("newGameForm").addEventListener("submit", onNewGameSubmit);
+  els.undo.addEventListener("click", requestUndo);
+  $("undoConfirmBtn").addEventListener("click", () => {
+    closeModal("undoModal");
+    undo();
+  });
   els.copySeed.addEventListener("click", copySeed);
   els.replayBtn.addEventListener("click", () => onOverlayAction("replay"));
   els.replayBar.addEventListener("click", (e) => {

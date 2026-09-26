@@ -20,6 +20,7 @@ export const icons = {
   ),
   refresh: svg(`<path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.3L20 15.5"/><path d="M20 20v-4.5h-4.5"/>`),
   play: svg(`<path d="M7 5.5v13l11-6.5-11-6.5Z"/>`),
+  undo: svg(`<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>`),
 
   // Replay controls
   pause: svg(`<path d="M9 5.5v13M15 5.5v13"/>`),
